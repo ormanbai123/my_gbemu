@@ -81,8 +81,12 @@ CPU* InitCpu()
     cpu->DE.reg16 = 0x00D8;
     cpu->HL.reg16 = 0x014D;
     cpu->SP.reg16 = 0xFFFE;
+#ifdef BIOS_ENABLE
+    cpu->PC.reg16 = 0x0000;
+#else
     cpu->PC.reg16 = 0x0100;
-    
+#endif
+
 	return cpu;
 }
 

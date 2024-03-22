@@ -1,9 +1,9 @@
 #include "bus.h"
 #include "timer.h"
+#include "ppu.h"
+
 
 #include <stdio.h>
-
-//#define BIOS_ENABLE
 
 namespace {
 	uint32_t ramSizes[] = { 0, 0, 8192, 32768, 131072, 65536 };
@@ -261,6 +261,14 @@ void GB_Write(uint16_t addr, uint8_t data) {
 					// Set DIV to 0
 					ResetDiv();
 					g_bus->memory[addr] = 0;
+					break;
+				}
+				case 0xFF40: {
+					// If Bit 7 of data is 0, Reset PPU/LCD
+					if ((data >> 7) == 0) {
+						ResetLcd();
+					}
+					g_bus->memory[addr] = data;
 					break;
 				}
 				case 0xFF41: {

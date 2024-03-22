@@ -81,6 +81,8 @@ typedef struct PPU {
 	Color* screenBuffer;
 };
 
+void ResetLcd();
+
 void InitPpu(Color* screen_buffer);
 
 void TickPpu(uint32_t cycles);

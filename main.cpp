@@ -50,7 +50,7 @@ int main()
 	Color* screen = (Color*)GB_Alloc((size_t)width * height * sizeof(Color));
 
 	InitGameboy(screen);
-	InsertCartridge("test2.gb");
+	InsertCartridge("tetris.gb");
 	
 
 	SetTraceLogLevel(LOG_ERROR);
@@ -119,6 +119,7 @@ int main()
 #endif
 		//----------------------
 
+		DrawText(TextFormat("%d", GetFPS()), 0, 0, 30, GREEN);
 
         EndDrawing();
         //----------------------------------------------------------------------------------

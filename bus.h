@@ -5,6 +5,8 @@
 #include <cstdint>
 #include "allocator.h"
 
+#define BIOS_ENABLE
+
 enum MBC_TYPE {
 	MBC0,
 	MBC1,

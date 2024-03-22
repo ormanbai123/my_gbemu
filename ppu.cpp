@@ -203,12 +203,12 @@ namespace {
 						pixel.color_id = (lo | hi);
 						pixel.palette = bgp;	   // only relevant to obj sprites
 						pixel.bg_priority = 0; // only relevant to obj sprites
-						
+
 						push_fifo(&g_ppu->bgFifo, pixel);
 					}
 
 					g_ppu->fetcher.x_pos += 1; // Address offset!
-					
+
 					g_ppu->fetcher.state = FetcherState::GET_TILE_NO; // Change state.
 				}
 				break;
@@ -264,14 +264,15 @@ namespace {
 		uint8_t mask = (lyc_eq_ly << 2) | (uint8_t)g_ppu->mode;
 		stat = (stat & 0b11111000) | mask;
 		GB_Internal_Write(0xFF41, stat);
+
+		// Update LY
+		GB_Internal_Write(0xFF44, g_ppu->ly);
 	}
 }
 
-void InitPpu(Color* screen_buffer) {
-	g_ppu = (PPU*)GB_Alloc(sizeof(PPU));
-
+void ResetLcd() {
 	g_ppu->oldStatFlag = false;
-	g_ppu->mode = PpuMode::OAMSCAN; 
+	g_ppu->mode = PpuMode::OAMSCAN;
 	g_ppu->ly = 0;
 	g_ppu->lx = 0;
 	g_ppu->elapsedDots = 0;
@@ -289,20 +290,36 @@ void InitPpu(Color* screen_buffer) {
 	reset_oam_stuff();
 
 	g_ppu->clippingStarted = false;
+}
+
+void InitPpu(Color* screen_buffer) {
+	g_ppu = (PPU*)GB_Alloc(sizeof(PPU));
+
+	ResetLcd();
 
 	// Set ScreenBuffer
-	g_ppu->screenBuffer = screen_buffer; 
+	g_ppu->screenBuffer = screen_buffer;
 }
 
 void TickPpu(uint32_t cycles) {
 	// Cycles are T-cycles.
 
-	for (uint32_t i = 0; i < cycles; ++i) {
+	// Check if LCD/PPU is enabled
+	if (BIT_GET(GB_Internal_Read(0xFF40), 7) == 0){
+		// DISABLED
+		uint8_t stat = GB_Internal_Read(0xFF41);
+		stat &= 0b11111100;
+		stat |= PpuMode::HBLANK;
+		GB_Internal_Write(0xFF41, stat);
+		return;
+	}
+	else {
+		// ENABLED
+		for (uint32_t i = 0; i < cycles; ++i) {
+			g_ppu->elapsedDots += 1;
+			g_ppu->scanlineDots += 1;
 
-		g_ppu->elapsedDots  += 1;
-		g_ppu->scanlineDots += 1;
-
-		switch (g_ppu->mode) {
+			switch (g_ppu->mode) {
 			case PpuMode::OAMSCAN: {
 				if ((i & 1) == 0)
 					oam_scan(); // execute every other T-cycle.
@@ -325,7 +342,7 @@ void TickPpu(uint32_t cycles) {
 					g_ppu->lx = 0;
 
 					// Clipping is done ONCE per scanline, therefore reset.
-					g_ppu->clippingStarted = false; 
+					g_ppu->clippingStarted = false;
 
 					g_ppu->mode = PpuMode::HBLANK;
 				}
@@ -335,7 +352,7 @@ void TickPpu(uint32_t cycles) {
 				if (g_ppu->scanlineDots == 456) {
 
 					//printf("Line done at: %d\n", g_ppu->elapsedDots);
-					
+
 					g_ppu->scanlineDots = 0;
 
 					g_ppu->ly += 1;
@@ -370,11 +387,21 @@ void TickPpu(uint32_t cycles) {
 			}
 			default:
 				break;
+			}
+
+			check_lcd_interrupt();
 		}
-		check_lcd_interrupt();
 	}
 
 }
+
+
+
+
+
+
+
+
 
 void DrawTiles() {
 	auto bgp = GB_Internal_Read(0xFF47);
