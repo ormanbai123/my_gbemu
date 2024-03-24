@@ -1,6 +1,6 @@
 #include "allocator.h"
 
-#define MAX_MEMORY 20 * 1024 * 1024
+#define MAX_MEMORY 10 * 1024 * 1024 // 10MB
 
 namespace {
 
@@ -74,3 +74,4 @@ void* GB_Alloc(size_t size, size_t align) {
 
 void GB_Free() { /* do nothing */ }
 
+size_t GetMemUsage() { return g_arena->offset; }

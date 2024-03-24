@@ -6,6 +6,8 @@
 
 #include <stdio.h>
 
+#include <assert.h>
+
 namespace {
 	PPU* g_ppu;
 
@@ -18,6 +20,36 @@ namespace {
 }
 
 namespace {
+
+	inline uint8_t get_sprite_height() {
+		return BIT_GET(GB_Internal_Read(0xFF40), 2) ? 16 : 8;
+	}
+
+	inline bool sprites_enabled() {
+		return BIT_GET(GB_Internal_Read(0xFF40), 1);
+	}
+
+	inline bool sprite_wins(FifoPixel* spritePixel, FifoPixel* bgPixel) {
+		// Returns true if sprite pixel should be put on the screen.
+		if (spritePixel->color_id == 0)
+			return false;
+		if (spritePixel->bg_priority == 1 && bgPixel->color_id != 0)
+			return false;
+		
+		return true;
+	}
+
+	Sprite pop_spriteBuffer(SpriteBuffer* obj_buffer) {
+		assert(obj_buffer->size > 0);
+
+		Sprite out = obj_buffer->buff[obj_buffer->head++];
+		obj_buffer->size--;
+
+		if (obj_buffer->size == 0)
+			obj_buffer->head = 0;
+
+		return out;
+	}
 
 	void reset_fifo(FIFO* fifo) {
 		fifo->size = 0;
@@ -58,6 +90,7 @@ namespace {
 	void reset_oam_stuff() {
 		g_ppu->oam_offset = 0;
 		g_ppu->spriteBuff.size = 0;
+		g_ppu->spriteBuff.head = 0;
 	}
 
 	void oam_scan() {
@@ -76,7 +109,7 @@ namespace {
 		flags	 = GB_Read(0xFE00 + g_ppu->oam_offset + 3);
 		g_ppu->oam_offset += 4;
 
-		if (xPos < 0)
+		if (xPos <= 0)
 			return;
 		if (ly + 16 < yPos)
 			return;
@@ -86,7 +119,10 @@ namespace {
 			return;
 
 		// Push to SpriteBuffer
-		g_ppu->spriteBuff.buff[g_ppu->spriteBuff.size] = tileIndx;
+		Sprite obj;
+		obj.posY = yPos; obj.posX = xPos; obj.tileIndx = tileIndx; obj.flags = flags;
+
+		g_ppu->spriteBuff.buff[g_ppu->spriteBuff.size] = obj;
 		g_ppu->spriteBuff.size = (g_ppu->spriteBuff.size + 1) % MAX_VISIBLE_SPRITES;	
 	}
 
@@ -120,16 +156,8 @@ namespace {
 					base = BIT_GET(lcdc, 3) ? 0x9C00 : 0x9800;
 				}
 				
-				// TODO FIX TILE FETCHER 
-				// PROBLEM: GB_Read() always returns 0!
 				g_ppu->fetcher.tile_no = GB_Read(base + offset);
 				//g_ppu->fetcher.tile_no = GB_Read(base | offset);
-				
-
-				// Debugging
-				//printf("Base:%x | Offset:%x |||| ", base, offset);
-				//printf("Tile number: %d |", g_ppu->fetcher.tile_no);
-				//----------------------------------------------
 
 				g_ppu->fetcher.state = FetcherState::GET_LO; // Change state.
 				break;
@@ -216,15 +244,98 @@ namespace {
 		}
 	}
 
-	void fetch_obj(uint16_t nth_cycle) {
+	void fetch_sprites(uint16_t nth_cycle) {
+		switch (g_ppu->spriteFetcher.state) {
+			case FetcherState::GET_TILE_NO: {
+				if (nth_cycle & 0x1) { return; }
+				g_ppu->spriteFetcher.state = FetcherState::GET_LO;
+				break;
+			}
+			case FetcherState::GET_LO: {
+				if (nth_cycle & 0x1) { return; }
+				g_ppu->spriteFetcher.state = FetcherState::GET_HI;
+				break;
+			}
+			case FetcherState::GET_HI: {
+				if (nth_cycle & 0x1) { return; }
+				g_ppu->spriteFetcher.state = FetcherState::PUSH;
+				break;
+			}
+			case FetcherState::PUSH: {
+				Sprite obj = pop_spriteBuffer(&g_ppu->spriteBuff);
 
+				auto spriteHeight = get_sprite_height();
+				uint8_t spriteFlags = obj.flags;
+				bool yflip = BIT_GET(spriteFlags, 6);
+				bool xflip = BIT_GET(spriteFlags, 5);
+
+				// TODO
+				uint16_t base = 0x8000;
+				if (spriteHeight == 8) {
+					base += obj.tileIndx * 16;
+				}
+				else {
+					// 8x16 sprite
+					if (obj.posY - 8 <= g_ppu->ly) {
+						base += (obj.tileIndx | 0x01) * 16;
+					}
+					else if (yflip) {
+						base += (obj.tileIndx | 0x01) * 16;
+					}
+					else {
+						base += (obj.tileIndx & 0xFE) * 16;
+					}
+				}
+			
+				uint16_t offset = ((int16_t)g_ppu->ly - obj.posY) & 7;
+				if (yflip == true)
+					offset = ~offset;
+				offset = (offset & 0b111) << 1;
+
+				g_ppu->spriteFetcher.tile_no = obj.tileIndx;
+				g_ppu->spriteFetcher.tile_data_lo = GB_Read(base + offset);
+				g_ppu->spriteFetcher.tile_data_hi = GB_Read(base + offset + 1);
+
+				for (auto i = 0; i < 8; ++i) {
+					uint8_t shift = (xflip == true) ? i : (7 - i);
+
+					uint8_t lo = (g_ppu->spriteFetcher.tile_data_lo >> shift) & 0x1;
+					uint8_t hi = ((g_ppu->spriteFetcher.tile_data_hi >> shift) & 0x1) << 1;
+
+					FifoPixel pixel     = {};
+					pixel.color_id      = (lo | hi);
+					pixel.palette		= BIT_GET(obj.flags, 4) ? GB_Internal_Read(0xFF49) : GB_Internal_Read(0xFF48);
+					pixel.bg_priority   = BIT_GET(obj.flags, 7); 
+
+					if (obj.posX + i - 8 >= g_ppu->lx) {
+						if (i >= g_ppu->objFifo.size)
+							push_fifo(&g_ppu->objFifo, pixel);
+						else if (g_ppu->objFifo.buff[i].color_id == 0)
+							g_ppu->objFifo.buff[i] = pixel;
+					}
+				}
+
+				// TODO check this condition.
+				g_ppu->fetchingSprite = (g_ppu->spriteBuff.size != 0) && (g_ppu->spriteBuff.buff[0].posX != obj.posX);
+
+				g_ppu->spriteFetcher.state = FetcherState::GET_TILE_NO;
+				break;
+			}
+		}
 	}
 
 	void push_pixel() {
 		if (g_ppu->bgFifo.size > 0) {
-			FifoPixel bg_pixel = pop_fifo(&g_ppu->bgFifo);
+			bool hasSprite = false;
 
-			FifoPixel& pixel = bg_pixel;
+			FifoPixel bg_pixel =  pop_fifo(&g_ppu->bgFifo);
+			FifoPixel obj_pixel;
+			if (g_ppu->objFifo.size > 0) {
+				obj_pixel = pop_fifo(&g_ppu->objFifo);
+				hasSprite = true;
+			}
+
+			FifoPixel* pixel = nullptr;
 
 			if (!g_ppu->clippingStarted) {
 				// This is done ONCE per scanline.
@@ -234,14 +345,27 @@ namespace {
 			}
 
 			if (g_ppu->lx >= 0) {
-				if (1) {
-					// TODO ADD SPRITE MIXING
-
-					uint8_t color_val = (pixel.palette >> (2 * pixel.color_id)) & 0b11;
-					g_ppu->screenBuffer[160 * g_ppu->ly + g_ppu->lx] = RAY_COLORS[color_val];
+				if (hasSprite && sprite_wins(&obj_pixel, &bg_pixel)) {
+					pixel = &obj_pixel;
 				}
+				else {
+					pixel = &bg_pixel;
+				}
+
+				uint8_t color_val = (pixel->palette >> (2 * pixel->color_id)) & 0b11;
+				g_ppu->screenBuffer[160 * g_ppu->ly + g_ppu->lx] = RAY_COLORS[color_val];
 			}
 			g_ppu->lx += 1;
+
+			// Check if sprites should be fetched
+			auto spriteX = g_ppu->spriteBuff.buff[0].posX;
+			if (sprites_enabled() && g_ppu->spriteBuff.size > 0 && g_ppu->lx + 8 >= spriteX) {
+				g_ppu->fetchingSprite = true;
+				g_ppu->spriteFetcher.state = FetcherState::GET_TILE_NO;
+				
+				// Reset BG fetcher
+				g_ppu->fetcher.state = FetcherState::GET_TILE_NO;
+			}
 		}
 	}
 
@@ -286,6 +410,10 @@ void ResetLcd() {
 	g_ppu->doneDummyRead = false;
 	reset_fetcher(&g_ppu->fetcher);
 
+	// Sprite Fetcher
+	bool fetchingSprite = false;
+	reset_fetcher(&g_ppu->spriteFetcher);
+
 	// OAM
 	reset_oam_stuff();
 
@@ -324,13 +452,31 @@ void TickPpu(uint32_t cycles) {
 				if ((i & 1) == 0)
 					oam_scan(); // execute every other T-cycle.
 
-				if (g_ppu->scanlineDots == 80)
+				if (g_ppu->scanlineDots == 80) {
 					g_ppu->mode = PpuMode::DRAWING;
+
+					// Sort entries in spriteBuffer;
+					// Insertion sort is used here.
+					for (auto left = 0; left < g_ppu->spriteBuff.size; ++left) {
+						auto right = left;
+						while (right > 0 && g_ppu->spriteBuff.buff[right - 1].posX > g_ppu->spriteBuff.buff[right].posX) {
+							auto temp = g_ppu->spriteBuff.buff[right];
+							g_ppu->spriteBuff.buff[right] = g_ppu->spriteBuff.buff[right - 1];
+							g_ppu->spriteBuff.buff[right - 1] = temp;
+							right -= 1;
+						}
+					}
+				}
 				break;
 			}
 			case PpuMode::DRAWING: {
-				fetch_bg(i);
-				push_pixel();
+				bool fetching_sprite = g_ppu->fetchingSprite;
+				if(!fetching_sprite)
+					fetch_bg(i);
+				if (fetching_sprite)
+					fetch_sprites(i);
+				if (!fetching_sprite)
+					push_pixel();
 
 				if (g_ppu->lx == 160) {
 					// Reset stuff when entering HBLANK
@@ -338,6 +484,10 @@ void TickPpu(uint32_t cycles) {
 					reset_fifo(&g_ppu->objFifo);
 					reset_fetcher(&g_ppu->fetcher); g_ppu->doneDummyRead = false;
 					reset_oam_stuff();
+
+					// Reset sprite fetcher
+					reset_fetcher(&g_ppu->spriteFetcher);
+					g_ppu->fetchingSprite = false;
 
 					g_ppu->lx = 0;
 
@@ -393,55 +543,4 @@ void TickPpu(uint32_t cycles) {
 		}
 	}
 
-}
-
-
-
-
-
-
-
-
-
-void DrawTiles() {
-	auto bgp = GB_Internal_Read(0xFF47);
-
-	auto base_addr = 0x8000;
-
-	auto max_X = 24 * 8;
-	auto max_Y = 16 * 8;
-
-	uint32_t x = 0;
-	uint32_t y = 0;
-
-	/*for (base_addr; base_addr < 0x97FF; base_addr += 16) {
-		for (auto j = 0; j < 8; ++j) {
-			uint8_t loByte = GB_Read(base_addr + j);
-			uint8_t hiByte = GB_Read(base_addr + j + 1);
-
-			for (auto b = 0; b < 8; ++b) {
-				uint8_t loBit = (loByte >> (7 - b)) & 0x01;
-				uint8_t hiBit = ((hiByte >> (7 - b)) & 0x01) << 1;
-
-				uint8_t color_id = (loBit | hiBit);
-				uint8_t color_val = (bgp >> (2 * color_id)) & 0b11;
-
-				g_ppu->screenBuffer[max_X * (y + j) + (x + b)] = RAY_COLORS[color_val];
-			}
-		}
-
-		if ((x+8) == 192) {
-			y += 8;
-		}
-		x = (x + 8) % max_X;
-	}*/
-
-	for (base_addr; base_addr < 0x97FF; base_addr += 16) {
-		for (auto i = 0; i < 16; ++i) {
-			printf("%02x ", GB_Read(base_addr + i));
-		}
-		printf("\n");
-	}
-
-	printf("\n\n");
 }

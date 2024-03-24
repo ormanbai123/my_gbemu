@@ -10,6 +10,8 @@
 
 #include "ppu.h"
 
+#include "joypad.h"
+
 typedef struct Gameboy {
 	uint8_t memory[0x10000];
 	CPU* cpu;
@@ -20,12 +22,16 @@ typedef struct Gameboy {
 
 	bool eiDelayed;
 
+	Joypad joypad;
+
 	Color* screenBuffer;
 };
 
 void InitGameboy(Color* screenBuffer);
 
 void InsertCartridge(const char* path);
+
+void HandleGbInput();
 
 void RunGameboy();
 

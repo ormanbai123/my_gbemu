@@ -1,7 +1,7 @@
 #include "bus.h"
 #include "timer.h"
 #include "ppu.h"
-
+#include "joypad.h"
 
 #include <stdio.h>
 
@@ -113,7 +113,6 @@ namespace {
 			default:
 			{
 				// Writing to RAM
-				// TODO check if has external ram
 				if (g_cart->ramEnabled) {
 					uint16_t lowerAddr = addr & 0x1FFF; // lower 13 bits
 					if (g_cart->banking_mode == 0b0) {
@@ -205,6 +204,16 @@ uint8_t GB_Read(uint16_t addr) {
 		}
 		default:
 		{
+			if (addr == 0xFF00) {
+				if (((g_bus->memory[addr] >> 5) & 0b1) == 0) {
+					return (g_bus->memory[addr] & 0xF0) | GetActionButtons();
+				}
+				if (((g_bus->memory[addr] >> 4) & 0b1) == 0) {
+					return (g_bus->memory[addr] & 0xF0) | GetDirectionButtons();
+				}
+				return (g_bus->memory[addr] | 0x0F);
+			}
+
 			return g_bus->memory[addr];
 			break;
 		}
@@ -242,7 +251,7 @@ void GB_Write(uint16_t addr, uint8_t data) {
 					// Joypad
 					// Lower nibble is Read-only
 					data &= 0xF0;
-					g_bus->memory[addr] = (g_bus->memory[0xFF41] & 0x0F) | data;
+					g_bus->memory[addr] = (g_bus->memory[addr] & 0x0F) | data;
 				}
 				case 0xFF01: {
 					// FOR TEST
@@ -274,7 +283,7 @@ void GB_Write(uint16_t addr, uint8_t data) {
 				case 0xFF41: {
 					// STAT
 					data &= 0b01111000;
-					g_bus->memory[addr] = (g_bus->memory[0xFF41] & 0b10000111) | data;
+					g_bus->memory[addr] = (g_bus->memory[addr] & 0b10000111) | data;
 					break;
 				}
 				case 0xFF44: {

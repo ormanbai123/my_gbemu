@@ -6,8 +6,13 @@
 #include <cstring>
 
 void InitArena();
+
 void ShutdownArena();
+
 void* GB_Alloc(size_t size, size_t align = 2 * sizeof(void*));
+
 void GB_Free();
+
+size_t GetMemUsage();
 
 #endif // !ALLOCATER_H

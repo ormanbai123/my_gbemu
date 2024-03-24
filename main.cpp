@@ -12,8 +12,7 @@ const int height = 144;
 const int windowWidth = width * 4; 
 const int windowHeight = height * 4;
 
-//const int windowWidth = 192 * 4; // 160 * 4
-//const int windowHeight = 128 * 4; // 144 * 4
+bool memoryMeasured = false;
 
 // Logging
 #ifdef LOGGING_ENABLED
@@ -50,9 +49,8 @@ int main()
 	Color* screen = (Color*)GB_Alloc((size_t)width * height * sizeof(Color));
 
 	InitGameboy(screen);
-	InsertCartridge("tetris.gb");
+	InsertCartridge("dr_mario.gb");
 	
-
 	SetTraceLogLevel(LOG_ERROR);
     InitWindow(windowWidth, windowHeight, "My Emulator");
     SetTargetFPS(60);
@@ -77,7 +75,7 @@ int main()
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
         // Update
-		
+
 		// Logging
 #ifdef LOGGING_ENABLED
 		if (IsKeyPressed(KEY_F7)) {
@@ -119,10 +117,18 @@ int main()
 #endif
 		//----------------------
 
-		DrawText(TextFormat("%d", GetFPS()), 0, 0, 30, GREEN);
+		//DrawText(TextFormat("%d", GetFPS()), 0, 0, 30, GREEN);
 
         EndDrawing();
         //----------------------------------------------------------------------------------
+
+		HandleGbInput();
+
+		// Getting memory usage info
+		/*if (!memoryMeasured) {
+			memoryMeasured = true;
+			printf("Memory usage: %f/10MB", (float)GetMemUsage() / (1024 * 1024));
+		}*/
     }
 
 

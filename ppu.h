@@ -22,9 +22,17 @@ typedef struct FIFO {
 
 #define MAX_VISIBLE_SPRITES 10
 
+typedef struct Sprite {
+	uint8_t posY;
+	uint8_t posX;
+	uint8_t tileIndx;
+	uint8_t flags;
+};
+
 typedef struct SpriteBuffer {
+	uint8_t head; // indx from which to pop.
 	uint8_t size;
-	uint8_t buff[MAX_VISIBLE_SPRITES]; // Holds sprite tile numbers
+	Sprite buff[MAX_VISIBLE_SPRITES]; // Holds sprite tile numbers
 };
 
 enum PpuMode {
@@ -71,6 +79,10 @@ typedef struct PPU {
 	Fetcher fetcher;
 	//
 	
+	// Sprite Fetcher
+	bool fetchingSprite;
+	Fetcher spriteFetcher;
+
 	// Fifo
 	FIFO bgFifo;
 	FIFO objFifo;
@@ -86,8 +98,5 @@ void ResetLcd();
 void InitPpu(Color* screen_buffer);
 
 void TickPpu(uint32_t cycles);
-
-// Logging
-void DrawTiles();
 
 #endif // !GB_PPU_H

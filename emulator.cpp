@@ -6,17 +6,14 @@
 
 #include "bus.h"
 
+#include "utils.h"
+
 #ifdef LOGGING_ENABLED
 #include <iostream>
 #include <string>
 #endif
 
 namespace {
-
-#ifdef LOGGING_ENABLED
-    
-#endif
-
     Gameboy* g_gameboy = nullptr;
 }
 
@@ -41,6 +38,8 @@ void InitGameboy(Color* screenBuffer) {
     // Variable needed to delay effect of EI instruction.
     g_gameboy->eiDelayed = false;
 
+    // Joypad
+    InitJoypad(&g_gameboy->joypad);
 
     //for (int i = 0; i < 0x10000; ++i) { g_gameboy->memory[i] = 0; }
     g_gameboy->memory[0xFF00] = 0xCF;
@@ -158,11 +157,84 @@ void InsertCartridge(const char* path) {
     InitCartridge(rom_data, rom_size);
 }
 
+
+void HandleGbInput() {
+    // REMEMBER
+    // Unconventionally for the Game Boy, a button being pressed
+    // is seen as the corresponding bit being 0, not 1.
+
+    uint8_t oldState = GetButtons();
+
+    // Key down
+    if (IsKeyDown(KEY_W)) {
+        SetButton(JOYPAD_BUTTON::Up);
+    }
+    if (IsKeyDown(KEY_A)) {
+        SetButton(JOYPAD_BUTTON::Left);
+    }
+    if (IsKeyDown(KEY_S)) {
+        SetButton(JOYPAD_BUTTON::Down);
+    }
+    if (IsKeyDown(KEY_D)) {
+        SetButton(JOYPAD_BUTTON::Right);
+    }
+    if (IsKeyDown(KEY_K)) {
+        SetButton(JOYPAD_BUTTON::B);
+    }
+    if (IsKeyDown(KEY_L)) {
+        SetButton(JOYPAD_BUTTON::A);
+    }
+    if (IsKeyDown(KEY_O)) {
+        SetButton(JOYPAD_BUTTON::Select);
+    }
+    if (IsKeyDown(KEY_P)) {
+        SetButton(JOYPAD_BUTTON::Start);
+    }
+
+    // Key up
+    if (IsKeyUp(KEY_W)) {
+        ClearButton(JOYPAD_BUTTON::Up);
+    }
+    if (IsKeyUp(KEY_A)) {
+        ClearButton(JOYPAD_BUTTON::Left);
+    }
+    if (IsKeyUp(KEY_S)) {
+        ClearButton(JOYPAD_BUTTON::Down);
+    }
+    if (IsKeyUp(KEY_D)) {
+        ClearButton(JOYPAD_BUTTON::Right);
+    }
+    if (IsKeyUp(KEY_K)) {
+        ClearButton(JOYPAD_BUTTON::B);
+    }
+    if (IsKeyUp(KEY_L)) {
+        ClearButton(JOYPAD_BUTTON::A);
+    }
+    if (IsKeyUp(KEY_O)) {
+        ClearButton(JOYPAD_BUTTON::Select);
+    }
+    if (IsKeyUp(KEY_P)) {
+        ClearButton(JOYPAD_BUTTON::Start);
+    }
+    
+    // TODO
+    // Maybe check for buttons that are selected (in Joypad Register)? 
+    uint8_t newState = !!GetButtons();
+    for (auto i = 0; i < 8; ++i) {
+        if ((oldState & 0b1) == 1 && (newState & 0b1) == 0) {
+            auto IF = GB_Internal_Read(0xFF0F);
+            GB_Internal_Write(0xFF0F, BIT_SET(IF, 4));
+        }
+        oldState >>= 1;
+        newState >>= 1;
+    }
+
+}
+
 void RunGameboy()
 {
     uint32_t local_t_cycles = 0;
 
-    // TODO add TickPPU, etc.
     while (g_gameboy->elapsedCycles < 70224) {
 
         if (g_gameboy->cpu->imeRequested && !g_gameboy->cpu->isStopped) {
@@ -187,13 +259,9 @@ void RunGameboy()
         TickTimer(local_t_cycles);
 
         g_gameboy->elapsedCycles += local_t_cycles;
-
     }
 
     g_gameboy->elapsedCycles %= 70224;
-
-    
-    //DrawTiles();
 }
 
 void ShutdownGameboy() {}
