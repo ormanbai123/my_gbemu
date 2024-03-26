@@ -81,7 +81,7 @@ namespace {
 			case 0x0:
 			case 0x1:
 			{
-				uint8_t lowerBits = data & 0x01;
+				uint8_t lowerBits = data & 0x0F;
 				if (lowerBits == 0xA)
 					g_cart->ramEnabled = true;
 				else
@@ -144,14 +144,14 @@ void InitCartridge(uint8_t* cartData, size_t size) {
 		// MBC0
 		printf("Cartridge type = MBC0\n");
 		
-		g_mbc_type = MBC0;
+		g_mbc_type = MBC_TYPE::MBC0;
 		return;
 	}
 	if (g_cart->rom[0x147] >= 0x01 && g_cart->rom[0x147] <= 0x03) {
 		// MBC1
 		printf("Cartridge type = MBC1\n");
 
-		g_mbc_type = MBC1;
+		g_mbc_type = MBC_TYPE::MBC1;
 
 		g_cart->banking_mode = 0b0;
 		g_cart->nRomBank = 0x01;

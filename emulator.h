@@ -16,6 +16,8 @@ typedef struct Gameboy {
 	uint8_t memory[0x10000];
 	CPU* cpu;
 	
+	PPU* ppu;
+
 	Timer timer;
 
 	uint32_t elapsedCycles; // Elapsed T cycles;
@@ -36,6 +38,8 @@ void HandleGbInput();
 void RunGameboy();
 
 void ShutdownGameboy();
+
+Gameboy* getInstance();
 
 #ifdef LOGGING_ENABLED
 std::string LogRunGameboy();

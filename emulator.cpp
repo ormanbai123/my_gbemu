@@ -27,7 +27,7 @@ void InitGameboy(Color* screenBuffer) {
     g_gameboy->cpu = InitCpu();
 
     // PPU
-    InitPpu(screenBuffer);
+    g_gameboy->ppu = InitPpu(screenBuffer);
 
     // Timer
     InitTimer(&g_gameboy->timer);
@@ -220,7 +220,7 @@ void HandleGbInput() {
     // TODO
     // Maybe check for buttons that are selected (in Joypad Register)? 
     uint8_t newState = !!GetButtons();
-    for (auto i = 0; i < 8; ++i) {
+    for (uint8_t i = 0; i < 8; ++i) {
         if ((oldState & 0b1) == 1 && (newState & 0b1) == 0) {
             auto IF = GB_Internal_Read(0xFF0F);
             GB_Internal_Write(0xFF0F, BIT_SET(IF, 4));
@@ -265,3 +265,5 @@ void RunGameboy()
 }
 
 void ShutdownGameboy() {}
+
+Gameboy* getInstance() { return g_gameboy; }

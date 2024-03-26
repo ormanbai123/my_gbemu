@@ -51,7 +51,6 @@ enum FetcherState {
 
 typedef struct Fetcher {
 	FetcherState state;
-	bool is_fetching_window;
 	uint16_t x_pos;
 
 	uint8_t tile_no;
@@ -68,6 +67,11 @@ typedef struct PPU {
 
 	uint8_t ly; 
 	int lx; // Need to be signed for scrolling
+
+	// Window related stuff
+	bool isFetchingWindow;
+	uint8_t windowLineCounter; // Internal Counter for Window rendering.
+	bool wylyCondition;
 
 	// Oam sprite buffer
 	uint16_t oam_offset;
@@ -95,7 +99,7 @@ typedef struct PPU {
 
 void ResetLcd();
 
-void InitPpu(Color* screen_buffer);
+PPU* InitPpu(Color* screen_buffer);
 
 void TickPpu(uint32_t cycles);
 

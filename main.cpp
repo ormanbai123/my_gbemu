@@ -49,7 +49,7 @@ int main()
 	Color* screen = (Color*)GB_Alloc((size_t)width * height * sizeof(Color));
 
 	InitGameboy(screen);
-	InsertCartridge("dr_mario.gb");
+	InsertCartridge("dmg-acid2.gb");
 	
 	SetTraceLogLevel(LOG_ERROR);
     InitWindow(windowWidth, windowHeight, "My Emulator");
@@ -70,6 +70,8 @@ int main()
 	Gameboy* log_state = GetGameboyState();
 #endif
 	//
+
+	Gameboy* myGameboy = getInstance();
 
     // Main loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
@@ -117,7 +119,10 @@ int main()
 #endif
 		//----------------------
 
-		//DrawText(TextFormat("%d", GetFPS()), 0, 0, 30, GREEN);
+		if (IsKeyDown(KEY_B)) {
+			DrawText(TextFormat("Mode: %d", myGameboy->ppu->mode), 0, 0, 30, RED);
+			DrawText(TextFormat("LY: %d", myGameboy->ppu->ly), 0, 30, 30, RED);
+		}
 
         EndDrawing();
         //----------------------------------------------------------------------------------

@@ -1,9 +1,6 @@
 #include "ppu.h"
-
 #include "bus.h"
-
 #include "utils.h"
-
 #include <stdio.h>
 
 #include <assert.h>
@@ -12,14 +9,26 @@ namespace {
 	PPU* g_ppu;
 
 	Color RAY_COLORS[] = {
-		{255,255,255,255},
+		/*{255,255,255,255},
 		{169,169,169,255},
 		{84,84,84,255},
-		{0,0,0,255}
+		{0,0,0,255}*/
+		/*{155,188,15,255},
+		{139,172,15,255},
+		{48,98,48,255},
+		{15,56,15,255}*/
+		{175,203,70,255},
+		{121,170,109,255},
+		{34,111,95,255},
+		{8,41,85,255}
 	};
 }
 
 namespace {
+
+	inline bool window_enabled() {
+		return BIT_GET(GB_Internal_Read(0xFF40), 5);
+	}
 
 	inline uint8_t get_sprite_height() {
 		return BIT_GET(GB_Internal_Read(0xFF40), 2) ? 16 : 8;
@@ -40,8 +49,6 @@ namespace {
 	}
 
 	Sprite pop_spriteBuffer(SpriteBuffer* obj_buffer) {
-		assert(obj_buffer->size > 0);
-
 		Sprite out = obj_buffer->buff[obj_buffer->head++];
 		obj_buffer->size--;
 
@@ -80,7 +87,6 @@ namespace {
 
 	void reset_fetcher(Fetcher* fetcher) {
 		fetcher->state = FetcherState::GET_TILE_NO;
-		fetcher->is_fetching_window = false;
 		fetcher->tile_no = 0;
 		fetcher->tile_data_lo = 0;
 		fetcher->tile_data_hi = 0;
@@ -138,26 +144,24 @@ namespace {
 				if (nth_cycle & 0x1)
 					return;
 
-				uint16_t base = 0x9800;
-				uint16_t offset = 0;
+				uint16_t base;
+				uint16_t offset;
 
-				if (g_ppu->fetcher.is_fetching_window) {
+				if (g_ppu->isFetchingWindow) {
 					// Window
 					// TODO
-					//offset = g_ppu->fetcher.x_pos + 32 * (/ 8);
+					offset = ((g_ppu->windowLineCounter / 8) * 32) + g_ppu->fetcher.x_pos;
 					base = BIT_GET(lcdc, 6) ? 0x9C00 : 0x9800;
 				}
 				else {
 					// Background
 					offset = ((g_ppu->fetcher.x_pos + (scx / 8)) & 0x1F) + ((((ly + scy) & 0xFF) / 8) * 32);
-					//offset = (((g_ppu->lx + scx) / 8) & 0x1f) | ((((ly + scy) / 8) & 0x1f) << 5);
 					offset &= 0x3FF;
 
 					base = BIT_GET(lcdc, 3) ? 0x9C00 : 0x9800;
 				}
 				
 				g_ppu->fetcher.tile_no = GB_Read(base + offset);
-				//g_ppu->fetcher.tile_no = GB_Read(base | offset);
 
 				g_ppu->fetcher.state = FetcherState::GET_LO; // Change state.
 				break;
@@ -177,10 +181,10 @@ namespace {
 					base = 0x9000 + (int8_t)g_ppu->fetcher.tile_no * 16; // Make signed
 				}
 
-				if (!g_ppu->fetcher.is_fetching_window)
-					offset = 2 * ((ly + scy) % 8);
+				if (g_ppu->isFetchingWindow)
+					offset = 2 * (g_ppu->windowLineCounter % 8);
 				else
-					; //offset = 2 * () //TODO
+					offset = 2 * ((ly + scy) % 8);
 
 				g_ppu->fetcher.tile_data_lo = GB_Read(base + offset + 0);
 
@@ -202,10 +206,10 @@ namespace {
 					base = 0x9000 + (int8_t)g_ppu->fetcher.tile_no * 16; // Make signed
 				}
 
-				if (!g_ppu->fetcher.is_fetching_window)
-					offset = 2 * ((ly + scy) % 8);
+				if (g_ppu->isFetchingWindow)
+					offset = 2 * (g_ppu->windowLineCounter % 8);
 				else
-					; //offset = 2 * () //TODO
+					offset = 2 * ((ly + scy) % 8);
 
 				g_ppu->fetcher.tile_data_hi = GB_Read(base + offset + 1);
 
@@ -269,7 +273,6 @@ namespace {
 				bool yflip = BIT_GET(spriteFlags, 6);
 				bool xflip = BIT_GET(spriteFlags, 5);
 
-				// TODO
 				uint16_t base = 0x8000;
 				if (spriteHeight == 8) {
 					base += obj.tileIndx * 16;
@@ -316,7 +319,7 @@ namespace {
 				}
 
 				// TODO check this condition.
-				g_ppu->fetchingSprite = (g_ppu->spriteBuff.size != 0) && (g_ppu->spriteBuff.buff[0].posX != obj.posX);
+				g_ppu->fetchingSprite = (g_ppu->spriteBuff.size != 0) && (g_ppu->spriteBuff.buff[g_ppu->spriteBuff.head].posX == obj.posX);
 
 				g_ppu->spriteFetcher.state = FetcherState::GET_TILE_NO;
 				break;
@@ -355,11 +358,24 @@ namespace {
 				uint8_t color_val = (pixel->palette >> (2 * pixel->color_id)) & 0b11;
 				g_ppu->screenBuffer[160 * g_ppu->ly + g_ppu->lx] = RAY_COLORS[color_val];
 			}
+			
 			g_ppu->lx += 1;
 
-			// Check if sprites should be fetched
-			auto spriteX = g_ppu->spriteBuff.buff[0].posX;
-			if (sprites_enabled() && g_ppu->spriteBuff.size > 0 && g_ppu->lx + 8 >= spriteX) {
+			// Check if Window fetching should be started.
+			uint8_t wx = GB_Internal_Read(0xFF4B);
+			if (window_enabled() && g_ppu->wylyCondition && (g_ppu->lx + 7) >= wx) {
+				g_ppu->isFetchingWindow = true;
+				g_ppu->windowLineCounter += 1;
+
+				// Reset BG fetcher and FIFO.
+				g_ppu->fetcher.state = FetcherState::GET_TILE_NO;
+				g_ppu->fetcher.x_pos = 0;
+				reset_fifo(&g_ppu->bgFifo);
+			}
+
+			// Check if Sprites should be fetched
+			auto spriteX = g_ppu->spriteBuff.buff[g_ppu->spriteBuff.head].posX;
+			if (sprites_enabled() && (g_ppu->spriteBuff.size > 0 ) && (g_ppu->lx + 8 >= spriteX)) {
 				g_ppu->fetchingSprite = true;
 				g_ppu->spriteFetcher.state = FetcherState::GET_TILE_NO;
 				
@@ -414,19 +430,26 @@ void ResetLcd() {
 	bool fetchingSprite = false;
 	reset_fetcher(&g_ppu->spriteFetcher);
 
+	// Window related stuff
+	g_ppu->isFetchingWindow = false;
+	g_ppu->windowLineCounter = 0;
+	g_ppu->wylyCondition = false;
+
 	// OAM
 	reset_oam_stuff();
 
 	g_ppu->clippingStarted = false;
 }
 
-void InitPpu(Color* screen_buffer) {
+PPU* InitPpu(Color* screen_buffer) {
 	g_ppu = (PPU*)GB_Alloc(sizeof(PPU));
 
 	ResetLcd();
 
 	// Set ScreenBuffer
 	g_ppu->screenBuffer = screen_buffer;
+
+	return g_ppu;
 }
 
 void TickPpu(uint32_t cycles) {
@@ -439,6 +462,13 @@ void TickPpu(uint32_t cycles) {
 		stat &= 0b11111100;
 		stat |= PpuMode::HBLANK;
 		GB_Internal_Write(0xFF41, stat);
+
+		// Reset 
+		g_ppu->ly = 0;
+		g_ppu->mode = PpuMode::HBLANK;
+		g_ppu->elapsedDots = 0;
+		g_ppu->scanlineDots = 0;
+
 		return;
 	}
 	else {
@@ -455,12 +485,24 @@ void TickPpu(uint32_t cycles) {
 				if (g_ppu->scanlineDots == 80) {
 					g_ppu->mode = PpuMode::DRAWING;
 
+					// Check if WY equals LY 
+					if (g_ppu->ly == GB_Internal_Read(0xFF4A))
+						g_ppu->wylyCondition = true;
+
+					// Window 
+					if (window_enabled() && g_ppu->wylyCondition && (g_ppu->lx + 7) >= GB_Internal_Read(0xFF4B)) {
+						g_ppu->isFetchingWindow = true;
+						g_ppu->windowLineCounter += 1;
+					}
+					else
+						g_ppu->isFetchingWindow = false;
+
 					// Sort entries in spriteBuffer;
 					// Insertion sort is used here.
-					for (auto left = 0; left < g_ppu->spriteBuff.size; ++left) {
-						auto right = left;
+					for (uint8_t left = 0; left < g_ppu->spriteBuff.size; ++left) {
+						uint8_t right = left;
 						while (right > 0 && g_ppu->spriteBuff.buff[right - 1].posX > g_ppu->spriteBuff.buff[right].posX) {
-							auto temp = g_ppu->spriteBuff.buff[right];
+							Sprite temp = g_ppu->spriteBuff.buff[right];
 							g_ppu->spriteBuff.buff[right] = g_ppu->spriteBuff.buff[right - 1];
 							g_ppu->spriteBuff.buff[right - 1] = temp;
 							right -= 1;
@@ -501,8 +543,6 @@ void TickPpu(uint32_t cycles) {
 			case PpuMode::HBLANK: {
 				if (g_ppu->scanlineDots == 456) {
 
-					//printf("Line done at: %d\n", g_ppu->elapsedDots);
-
 					g_ppu->scanlineDots = 0;
 
 					g_ppu->ly += 1;
@@ -519,6 +559,12 @@ void TickPpu(uint32_t cycles) {
 				break;
 			}
 			case PpuMode::VBLANK: {
+
+				// Reset some Window stuff.
+				g_ppu->windowLineCounter = 0;
+				g_ppu->wylyCondition = false;
+				//
+
 				if (g_ppu->scanlineDots == 456) {
 					g_ppu->scanlineDots = 0;
 					g_ppu->ly += 1;
@@ -538,7 +584,6 @@ void TickPpu(uint32_t cycles) {
 			default:
 				break;
 			}
-
 			check_lcd_interrupt();
 		}
 	}

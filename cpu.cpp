@@ -930,7 +930,6 @@ inline uint8_t srl(CPU* cpu, uint8_t num) {
     uint8_t op_6e(CPU* cpu) { cpu->HL.lo = GB_Read(cpu->HL.reg16); return 8; }
     uint8_t op_6f(CPU* cpu) { cpu->HL.lo = cpu->AF.hi; return 4; }
 
-    // TODO implement this.
     uint8_t op_70(CPU* cpu) { GB_Write(cpu->HL.reg16, cpu->BC.hi); return 8; }
     uint8_t op_71(CPU* cpu) { GB_Write(cpu->HL.reg16, cpu->BC.lo); return 8; }
     uint8_t op_72(CPU* cpu) { GB_Write(cpu->HL.reg16, cpu->DE.hi); return 8; }
@@ -1314,7 +1313,6 @@ inline uint8_t srl(CPU* cpu, uint8_t num) {
         return 16;
     }
     // LD HL, SP + e8
-    // TODO CHECK THIS
     uint8_t op_f8(CPU* cpu){
         int8_t e8 = (int8_t)fetch_byte(cpu);
 
