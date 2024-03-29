@@ -17,7 +17,7 @@ namespace {
     Gameboy* g_gameboy = nullptr;
 }
 
-void InitGameboy(Color* screenBuffer) {
+void InitGameboy(Color* screenBuffer, void (*RenderFrame)(void)) {
     if (g_gameboy)
         return;
 
@@ -27,7 +27,7 @@ void InitGameboy(Color* screenBuffer) {
     g_gameboy->cpu = InitCpu();
 
     // PPU
-    g_gameboy->ppu = InitPpu(screenBuffer);
+    g_gameboy->ppu = InitPpu(screenBuffer, RenderFrame);
 
     // Timer
     InitTimer(&g_gameboy->timer);
@@ -223,7 +223,8 @@ void HandleGbInput() {
     for (uint8_t i = 0; i < 8; ++i) {
         if ((oldState & 0b1) == 1 && (newState & 0b1) == 0) {
             auto IF = GB_Internal_Read(0xFF0F);
-            GB_Internal_Write(0xFF0F, BIT_SET(IF, 4));
+            BIT_SET(IF, 4);
+            GB_Internal_Write(0xFF0F, IF);
         }
         oldState >>= 1;
         newState >>= 1;

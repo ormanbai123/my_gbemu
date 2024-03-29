@@ -29,7 +29,7 @@ typedef struct Gameboy {
 	Color* screenBuffer;
 };
 
-void InitGameboy(Color* screenBuffer);
+void InitGameboy(Color* screenBuffer, void (*RenderFrame)(void));
 
 void InsertCartridge(const char* path);
 

@@ -274,7 +274,7 @@ void GB_Write(uint16_t addr, uint8_t data) {
 				}
 				case 0xFF40: {
 					// If Bit 7 of data is 0, Reset PPU/LCD
-					if ((data >> 7) == 0) {
+					if ((data >> 7) == 1 && (g_bus->memory[addr] >> 7) == 0) {
 						ResetLcd();
 					}
 					g_bus->memory[addr] = data;

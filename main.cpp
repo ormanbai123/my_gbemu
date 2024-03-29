@@ -14,6 +14,10 @@ const int windowHeight = height * 4;
 
 bool memoryMeasured = false;
 
+// Rendering stuff
+Color* screen;
+Texture2D texture;
+
 // Logging
 #ifdef LOGGING_ENABLED
 #include <iomanip>
@@ -42,14 +46,18 @@ private:
 #endif
 //
 
+void RenderFrame() {
+	UpdateTexture(texture, screen);
+}
+
 int main()
 {
 	InitArena();
 
-	Color* screen = (Color*)GB_Alloc((size_t)width * height * sizeof(Color));
+	screen = (Color*)GB_Alloc((size_t)width * height * sizeof(Color));
 
-	InitGameboy(screen);
-	InsertCartridge("dmg-acid2.gb");
+	InitGameboy(screen, RenderFrame);
+	InsertCartridge("dr_mario.gb");
 	
 	SetTraceLogLevel(LOG_ERROR);
     InitWindow(windowWidth, windowHeight, "My Emulator");
@@ -62,7 +70,7 @@ int main()
 	im.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
 	im.mipmaps = 1;
 	
-	Texture2D texture = LoadTextureFromImage(im);
+	texture = LoadTextureFromImage(im);
 
 	// Logging
 #ifdef LOGGING_ENABLED
@@ -87,8 +95,6 @@ int main()
 		RunGameboy();
 #endif
 		//--------------------------------------------------------------
-
-		UpdateTexture(texture, screen);
 
         // Draw
         //----------------------------------------------------------------------------------

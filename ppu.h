@@ -4,22 +4,6 @@
 #include "raylib.h"
 #include <stdint.h>
 
-#define _FIFO_SIZE_ 8
-
-typedef struct FifoPixel {
-	uint8_t color_id;
-	uint8_t palette;
-	uint8_t bg_priority;
-};
-
-typedef struct FIFO {
-	uint16_t size;
-	FifoPixel buff[_FIFO_SIZE_];
-
-	uint16_t head;
-	uint16_t tail;
-};
-
 #define MAX_VISIBLE_SPRITES 10
 
 typedef struct Sprite {
@@ -74,32 +58,16 @@ typedef struct PPU {
 	bool wylyCondition;
 
 	// Oam sprite buffer
-	uint16_t oam_offset;
 	SpriteBuffer spriteBuff;
 	//
 
-	// Fetcher
-	bool doneDummyRead;
-	Fetcher fetcher;
-	//
-	
-	// Sprite Fetcher
-	bool fetchingSprite;
-	Fetcher spriteFetcher;
-
-	// Fifo
-	FIFO bgFifo;
-	FIFO objFifo;
-	//
-
-	bool clippingStarted;
-
 	Color* screenBuffer;
+	void (*RenderFrame)(void);
 };
 
 void ResetLcd();
 
-PPU* InitPpu(Color* screen_buffer);
+PPU* InitPpu(Color* screen_buffer, void (*RenderFrame)(void));
 
 void TickPpu(uint32_t cycles);
 
