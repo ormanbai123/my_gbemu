@@ -26,31 +26,14 @@ enum PpuMode {
 	DRAWING
 };
 
-enum FetcherState {
-	GET_TILE_NO,
-	GET_LO,
-	GET_HI,
-	PUSH
-};
-
-typedef struct Fetcher {
-	FetcherState state;
-	uint16_t x_pos;
-
-	uint8_t tile_no;
-	uint8_t tile_data_lo;
-	uint8_t tile_data_hi;
-};
-
 typedef struct PPU {
 	uint32_t elapsedDots;
-	uint32_t scanlineDots;
+	uint16_t scanlineDots;
 	
 	bool oldStatFlag;
 	PpuMode mode;
 
 	uint8_t ly; 
-	int lx; // Need to be signed for scrolling
 
 	// Window related stuff
 	bool isFetchingWindow;
@@ -70,5 +53,9 @@ void ResetLcd();
 PPU* InitPpu(Color* screen_buffer, void (*RenderFrame)(void));
 
 void TickPpu(uint32_t cycles);
+
+void CheckLcdInterrupt();
+
+uint8_t GetPpuLy();
 
 #endif // !GB_PPU_H

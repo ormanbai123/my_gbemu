@@ -204,17 +204,25 @@ uint8_t GB_Read(uint16_t addr) {
 		}
 		default:
 		{
-			if (addr == 0xFF00) {
-				if (((g_bus->memory[addr] >> 5) & 0b1) == 0) {
-					return (g_bus->memory[addr] & 0xF0) | GetActionButtons();
+			switch (addr) {
+				case 0xFF00: {
+					if (((g_bus->memory[addr] >> 5) & 0b1) == 0) {
+						return (g_bus->memory[addr] & 0xF0) | GetActionButtons();
+					}
+					if (((g_bus->memory[addr] >> 4) & 0b1) == 0) {
+						return (g_bus->memory[addr] & 0xF0) | GetDirectionButtons();
+					}
+					return (g_bus->memory[addr] | 0x0F);
 				}
-				if (((g_bus->memory[addr] >> 4) & 0b1) == 0) {
-					return (g_bus->memory[addr] & 0xF0) | GetDirectionButtons();
+				case 0xFF44: {
+					// Reading LY
+					return GetPpuLy();
 				}
-				return (g_bus->memory[addr] | 0x0F);
+				default: {
+					return g_bus->memory[addr];
+				}
 			}
 
-			return g_bus->memory[addr];
 			break;
 		}
 	}
@@ -278,16 +286,27 @@ void GB_Write(uint16_t addr, uint8_t data) {
 						ResetLcd();
 					}
 					g_bus->memory[addr] = data;
+
+					CheckLcdInterrupt();
 					break;
 				}
 				case 0xFF41: {
 					// STAT
 					data &= 0b01111000;
 					g_bus->memory[addr] = (g_bus->memory[addr] & 0b10000111) | data;
+
+					CheckLcdInterrupt();
 					break;
 				}
 				case 0xFF44: {
 					// LY (Read-only)
+					break;
+				}
+				case 0xFF45: {
+					// LYC
+					g_bus->memory[addr] = data;
+
+					CheckLcdInterrupt();
 					break;
 				}
 				case 0xFF46: {
