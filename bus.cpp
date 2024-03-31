@@ -45,7 +45,7 @@ namespace {
 				if (g_cart->banking_mode == 0b0) {
 					return g_cart->rom[addr & 0x3FFF];
 				}
-				uint16_t mask = (uint16_t)(g_cart->nRamBank << 19);
+				uint32_t mask = (uint32_t)(g_cart->nRamBank << 19);
 				return g_cart->rom[mask | (addr & 0x3FFF)];
 				//break;
 			}
@@ -54,7 +54,7 @@ namespace {
 			case 0x6:
 			case 0x7:
 			{
-				uint16_t mask = (uint16_t)(g_cart->nRamBank << 19) | (uint16_t)(g_cart->nRomBank << 14);
+				uint32_t mask = (uint32_t)(g_cart->nRamBank << 19) | (uint32_t)(g_cart->nRomBank << 14);
 				return g_cart->rom[mask | (addr & 0x3FFF)];
 				//break;
 			}
@@ -260,12 +260,6 @@ void GB_Write(uint16_t addr, uint8_t data) {
 					// Lower nibble is Read-only
 					data &= 0xF0;
 					g_bus->memory[addr] = (g_bus->memory[addr] & 0x0F) | data;
-				}
-				case 0xFF01: {
-					// FOR TEST
-					//printf("%c", data);
-					g_bus->memory[addr] = data;
-					break;
 				}
 				case 0xFF02: {
 					// FOR TEST!! Blargg
