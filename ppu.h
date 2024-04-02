@@ -36,7 +36,6 @@ typedef struct PPU {
 	uint8_t ly; 
 
 	// Window related stuff
-	bool isFetchingWindow;
 	uint8_t windowLineCounter; // Internal Counter for Window rendering.
 	bool wylyCondition;
 

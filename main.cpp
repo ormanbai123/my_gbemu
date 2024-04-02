@@ -57,7 +57,7 @@ int main()
 	screen = (Color*)GB_Alloc((size_t)width * height * sizeof(Color));
 
 	InitGameboy(screen, RenderFrame);
-	InsertCartridge("zelda_awakening.gb");
+	InsertCartridge("super_mario_land.gb");
 	
 	SetTraceLogLevel(LOG_ERROR);
     InitWindow(windowWidth, windowHeight, "My Emulator");

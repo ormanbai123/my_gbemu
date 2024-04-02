@@ -135,11 +135,41 @@ namespace {
 
 		uint16_t tile_row = (g_ppu->ly + scy) % 8;
 
-		for (int w = 0; w < 160; ++w) {
-			if (window_enabled) {
+		uint8_t wx = GB_Internal_Read(0xFF4B);
 
+		bool increment_wind_line = false;
+
+		for (int w = 0; w < 160; ++w) {
+			if (window_enabled && g_ppu->wylyCondition && w + 7 >= wx) {
+
+				increment_wind_line = true;
+
+				offset = (((w + 7 - wx) / 8) & 0x1f) + (((g_ppu->windowLineCounter / 8) & 0x1F) * 32);
+				offset &= 0x3ff;
+				tile_id_addr = window_map + offset;
+
+				tile_id = GB_Read(tile_id_addr);
+
+				if (signed_adressing)
+					tile_addr = bg_tile_area + (16 * (int8_t)tile_id) + (tile_row * 2);
+				else
+					tile_addr = bg_tile_area + (16 * tile_id) + (tile_row * 2);
+
+
+				loByte = GB_Read(tile_addr);
+				hiByte = GB_Read(tile_addr + 1);
+
+				loBit = (loByte >> (7 - ((w + 7 - wx) & 7))) & 0x01;
+				hiBit = (hiByte >> (7 - ((w + 7 - wx) & 7))) & 0x01;
+
+				color_id = (hiBit << 1) | loBit;
+				color_val = (bgp >> (2 * color_id)) & 0b11;
+
+				scanline_color_ids[w] = color_id;
+
+				g_ppu->screenBuffer[g_ppu->ly * 160 + w] = RAY_COLORS[color_val];
 			}
-			if (bg_enabled) {
+			else if (bg_enabled) {
 
 				offset = (((w + scx) / 8) & 0x1f) + ((((g_ppu->ly + scy) / 8) & 0x1F) * 32);
 				offset &= 0x3ff;
@@ -167,6 +197,11 @@ namespace {
 				g_ppu->screenBuffer[g_ppu->ly * 160 + w] = RAY_COLORS[color_val];
 			}
 		}
+
+
+		if (increment_wind_line)
+			g_ppu->windowLineCounter += 1;
+
 
 		if (sprites_enabled() == true) {
 
@@ -287,7 +322,6 @@ void ResetLcd() {
 	g_ppu->scanlineDots = 0;
 
 	// Window related stuff
-	g_ppu->isFetchingWindow = false;
 	g_ppu->windowLineCounter = 0;
 	g_ppu->wylyCondition = false;
 }
@@ -304,7 +338,6 @@ PPU* InitPpu(Color* screen_buffer, void (*RenderFrame)(void)) {
 	g_ppu->scanlineDots = 0;
 	
 	// Window related stuff
-	g_ppu->isFetchingWindow = false;
 	g_ppu->windowLineCounter = 0;
 	g_ppu->wylyCondition = false;
 	//---------------------------------------
@@ -381,6 +414,11 @@ void TickPpu(uint32_t cycles) {
 				}
 				case PpuMode::VBLANK: {
 					if (g_ppu->scanlineDots == 456) {
+						//----------------
+						// RESET stuff.
+						g_ppu->wylyCondition = false;
+						g_ppu->windowLineCounter = 0;
+
 						g_ppu->scanlineDots = 0;
 						g_ppu->ly += 1;
 
