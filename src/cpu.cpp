@@ -4,6 +4,8 @@
 
 #include "bus.h"
 
+#include "opcodes.h"
+
 #define F_Z 7
 #define F_N 6
 #define F_H 5
@@ -54,8 +56,41 @@ const char* ex_opcode_names[] = {
 #endif // LOGGING_ENABLED
 
 // Forward declaration
-uint8_t(*opcode_table[])(CPU* cpu);
-uint8_t(*ex_opcode_table[])(CPU* cpu);
+uint8_t (*opcode_table[])(CPU* cpu) = { op_00, op_01, op_02, op_03, op_04, op_05, op_06, op_07, op_08, op_09, op_0a, op_0b, op_0c, op_0d, op_0e, op_0f,
+                                            op_10, op_11, op_12, op_13, op_14, op_15, op_16, op_17, op_18, op_19, op_1a, op_1b, op_1c, op_1d, op_1e, op_1f,
+                                            op_20, op_21, op_22, op_23, op_24, op_25, op_26, op_27, op_28, op_29, op_2a, op_2b, op_2c, op_2d, op_2e, op_2f,
+                                            op_30, op_31, op_32, op_33, op_34, op_35, op_36, op_37, op_38, op_39, op_3a, op_3b, op_3c, op_3d, op_3e, op_3f,
+                                            op_40, op_41, op_42, op_43, op_44, op_45, op_46, op_47, op_48, op_49, op_4a, op_4b, op_4c, op_4d, op_4e, op_4f,
+                                            op_50, op_51, op_52, op_53, op_54, op_55, op_56, op_57, op_58, op_59, op_5a, op_5b, op_5c, op_5d, op_5e, op_5f,
+                                            op_60, op_61, op_62, op_63, op_64, op_65, op_66, op_67, op_68, op_69, op_6a, op_6b, op_6c, op_6d, op_6e, op_6f,
+                                            op_70, op_71, op_72, op_73, op_74, op_75, op_76, op_77, op_78, op_79, op_7a, op_7b, op_7c, op_7d, op_7e, op_7f,
+                                            op_80, op_81, op_82, op_83, op_84, op_85, op_86, op_87, op_88, op_89, op_8a, op_8b, op_8c, op_8d, op_8e, op_8f,
+                                            op_90, op_91, op_92, op_93, op_94, op_95, op_96, op_97, op_98, op_99, op_9a, op_9b, op_9c, op_9d, op_9e, op_9f,
+                                            op_a0, op_a1, op_a2, op_a3, op_a4, op_a5, op_a6, op_a7, op_a8, op_a9, op_aa, op_ab, op_ac, op_ad, op_ae, op_af,
+                                            op_b0, op_b1, op_b2, op_b3, op_b4, op_b5, op_b6, op_b7, op_b8, op_b9, op_ba, op_bb, op_bc, op_bd, op_be, op_bf,
+                                            op_c0, op_c1, op_c2, op_c3, op_c4, op_c5, op_c6, op_c7, op_c8, op_c9, op_ca, op_cb, op_cc, op_cd, op_ce, op_cf,
+                                            op_d0, op_d1, op_d2, op_d3, op_d4, op_d5, op_d6, op_d7, op_d8, op_d9, op_da, op_db, op_dc, op_dd, op_de, op_df,
+                                            op_e0, op_e1, op_e2, op_e3, op_e4, op_e5, op_e6, op_e7, op_e8, op_e9, op_ea, op_eb, op_ec, op_ed, op_ee, op_ef,
+                                            op_f0, op_f1, op_f2, op_f3, op_f4, op_f5, op_f6, op_f7, op_f8, op_f9, op_fa, op_fb, op_fc, op_fd, op_fe, op_ff };
+
+uint8_t (*ex_opcode_table[])(CPU* cpu) = { 	op_cb_00, op_cb_01, op_cb_02, op_cb_03, op_cb_04, op_cb_05, op_cb_06, op_cb_07, op_cb_08, op_cb_09, op_cb_0a, op_cb_0b, op_cb_0c, op_cb_0d, op_cb_0e, op_cb_0f,
+                                               op_cb_10, op_cb_11, op_cb_12, op_cb_13, op_cb_14, op_cb_15, op_cb_16, op_cb_17, op_cb_18, op_cb_19, op_cb_1a, op_cb_1b, op_cb_1c, op_cb_1d, op_cb_1e, op_cb_1f,
+                                               op_cb_20, op_cb_21, op_cb_22, op_cb_23, op_cb_24, op_cb_25, op_cb_26, op_cb_27, op_cb_28, op_cb_29, op_cb_2a, op_cb_2b, op_cb_2c, op_cb_2d, op_cb_2e, op_cb_2f,
+                                               op_cb_30, op_cb_31, op_cb_32, op_cb_33, op_cb_34, op_cb_35, op_cb_36, op_cb_37, op_cb_38, op_cb_39, op_cb_3a, op_cb_3b, op_cb_3c, op_cb_3d, op_cb_3e, op_cb_3f,
+                                               op_cb_40, op_cb_41, op_cb_42, op_cb_43, op_cb_44, op_cb_45, op_cb_46, op_cb_47, op_cb_48, op_cb_49, op_cb_4a, op_cb_4b, op_cb_4c, op_cb_4d, op_cb_4e, op_cb_4f,
+                                               op_cb_50, op_cb_51, op_cb_52, op_cb_53, op_cb_54, op_cb_55, op_cb_56, op_cb_57, op_cb_58, op_cb_59, op_cb_5a, op_cb_5b, op_cb_5c, op_cb_5d, op_cb_5e, op_cb_5f,
+                                               op_cb_60, op_cb_61, op_cb_62, op_cb_63, op_cb_64, op_cb_65, op_cb_66, op_cb_67, op_cb_68, op_cb_69, op_cb_6a, op_cb_6b, op_cb_6c, op_cb_6d, op_cb_6e, op_cb_6f,
+                                               op_cb_70, op_cb_71, op_cb_72, op_cb_73, op_cb_74, op_cb_75, op_cb_76, op_cb_77, op_cb_78, op_cb_79, op_cb_7a, op_cb_7b, op_cb_7c, op_cb_7d, op_cb_7e, op_cb_7f,
+                                               op_cb_80, op_cb_81, op_cb_82, op_cb_83, op_cb_84, op_cb_85, op_cb_86, op_cb_87, op_cb_88, op_cb_89, op_cb_8a, op_cb_8b, op_cb_8c, op_cb_8d, op_cb_8e, op_cb_8f,
+                                               op_cb_90, op_cb_91, op_cb_92, op_cb_93, op_cb_94, op_cb_95, op_cb_96, op_cb_97, op_cb_98, op_cb_99, op_cb_9a, op_cb_9b, op_cb_9c, op_cb_9d, op_cb_9e, op_cb_9f,
+                                               op_cb_a0, op_cb_a1, op_cb_a2, op_cb_a3, op_cb_a4, op_cb_a5, op_cb_a6, op_cb_a7, op_cb_a8, op_cb_a9, op_cb_aa, op_cb_ab, op_cb_ac, op_cb_ad, op_cb_ae, op_cb_af,
+                                               op_cb_b0, op_cb_b1, op_cb_b2, op_cb_b3, op_cb_b4, op_cb_b5, op_cb_b6, op_cb_b7, op_cb_b8, op_cb_b9, op_cb_ba, op_cb_bb, op_cb_bc, op_cb_bd, op_cb_be, op_cb_bf,
+                                               op_cb_c0, op_cb_c1, op_cb_c2, op_cb_c3, op_cb_c4, op_cb_c5, op_cb_c6, op_cb_c7, op_cb_c8, op_cb_c9, op_cb_ca, op_cb_cb, op_cb_cc, op_cb_cd, op_cb_ce, op_cb_cf,
+                                               op_cb_d0, op_cb_d1, op_cb_d2, op_cb_d3, op_cb_d4, op_cb_d5, op_cb_d6, op_cb_d7, op_cb_d8, op_cb_d9, op_cb_da, op_cb_db, op_cb_dc, op_cb_dd, op_cb_de, op_cb_df,
+                                               op_cb_e0, op_cb_e1, op_cb_e2, op_cb_e3, op_cb_e4, op_cb_e5, op_cb_e6, op_cb_e7, op_cb_e8, op_cb_e9, op_cb_ea, op_cb_eb, op_cb_ec, op_cb_ed, op_cb_ee, op_cb_ef,
+                                               op_cb_f0, op_cb_f1, op_cb_f2, op_cb_f3, op_cb_f4, op_cb_f5, op_cb_f6, op_cb_f7, op_cb_f8, op_cb_f9, op_cb_fa, op_cb_fb, op_cb_fc, op_cb_fd, op_cb_fe, op_cb_ff };
+
+
 inline void push_stack(CPU* cpu, Register reg);
 inline uint8_t fetch_byte(CPU* cpu);
 //
@@ -1423,39 +1458,7 @@ inline uint8_t srl(CPU* cpu, uint8_t num) {
     uint8_t op_ed(CPU* cpu) {return 0;}
     uint8_t op_fd(CPU* cpu) {return 0;}
 
-    uint8_t (*opcode_table[])(CPU* cpu) = { op_00, op_01, op_02, op_03, op_04, op_05, op_06, op_07, op_08, op_09, op_0a, op_0b, op_0c, op_0d, op_0e, op_0f,
-                                            op_10, op_11, op_12, op_13, op_14, op_15, op_16, op_17, op_18, op_19, op_1a, op_1b, op_1c, op_1d, op_1e, op_1f,
-                                            op_20, op_21, op_22, op_23, op_24, op_25, op_26, op_27, op_28, op_29, op_2a, op_2b, op_2c, op_2d, op_2e, op_2f,
-                                            op_30, op_31, op_32, op_33, op_34, op_35, op_36, op_37, op_38, op_39, op_3a, op_3b, op_3c, op_3d, op_3e, op_3f,
-                                            op_40, op_41, op_42, op_43, op_44, op_45, op_46, op_47, op_48, op_49, op_4a, op_4b, op_4c, op_4d, op_4e, op_4f,
-                                            op_50, op_51, op_52, op_53, op_54, op_55, op_56, op_57, op_58, op_59, op_5a, op_5b, op_5c, op_5d, op_5e, op_5f,
-                                            op_60, op_61, op_62, op_63, op_64, op_65, op_66, op_67, op_68, op_69, op_6a, op_6b, op_6c, op_6d, op_6e, op_6f,
-                                            op_70, op_71, op_72, op_73, op_74, op_75, op_76, op_77, op_78, op_79, op_7a, op_7b, op_7c, op_7d, op_7e, op_7f,
-                                            op_80, op_81, op_82, op_83, op_84, op_85, op_86, op_87, op_88, op_89, op_8a, op_8b, op_8c, op_8d, op_8e, op_8f,
-                                            op_90, op_91, op_92, op_93, op_94, op_95, op_96, op_97, op_98, op_99, op_9a, op_9b, op_9c, op_9d, op_9e, op_9f,
-                                            op_a0, op_a1, op_a2, op_a3, op_a4, op_a5, op_a6, op_a7, op_a8, op_a9, op_aa, op_ab, op_ac, op_ad, op_ae, op_af,
-                                            op_b0, op_b1, op_b2, op_b3, op_b4, op_b5, op_b6, op_b7, op_b8, op_b9, op_ba, op_bb, op_bc, op_bd, op_be, op_bf,
-                                            op_c0, op_c1, op_c2, op_c3, op_c4, op_c5, op_c6, op_c7, op_c8, op_c9, op_ca, op_cb, op_cc, op_cd, op_ce, op_cf,
-                                            op_d0, op_d1, op_d2, op_d3, op_d4, op_d5, op_d6, op_d7, op_d8, op_d9, op_da, op_db, op_dc, op_dd, op_de, op_df,
-                                            op_e0, op_e1, op_e2, op_e3, op_e4, op_e5, op_e6, op_e7, op_e8, op_e9, op_ea, op_eb, op_ec, op_ed, op_ee, op_ef,
-                                            op_f0, op_f1, op_f2, op_f3, op_f4, op_f5, op_f6, op_f7, op_f8, op_f9, op_fa, op_fb, op_fc, op_fd, op_fe, op_ff };
-
-    uint8_t (*ex_opcode_table[])(CPU* cpu) = { op_cb_00, op_cb_01, op_cb_02, op_cb_03, op_cb_04, op_cb_05, op_cb_06, op_cb_07, op_cb_08, op_cb_09, op_cb_0a, op_cb_0b, op_cb_0c, op_cb_0d, op_cb_0e, op_cb_0f,
-                                               op_cb_10, op_cb_11, op_cb_12, op_cb_13, op_cb_14, op_cb_15, op_cb_16, op_cb_17, op_cb_18, op_cb_19, op_cb_1a, op_cb_1b, op_cb_1c, op_cb_1d, op_cb_1e, op_cb_1f,
-                                               op_cb_20, op_cb_21, op_cb_22, op_cb_23, op_cb_24, op_cb_25, op_cb_26, op_cb_27, op_cb_28, op_cb_29, op_cb_2a, op_cb_2b, op_cb_2c, op_cb_2d, op_cb_2e, op_cb_2f,
-                                               op_cb_30, op_cb_31, op_cb_32, op_cb_33, op_cb_34, op_cb_35, op_cb_36, op_cb_37, op_cb_38, op_cb_39, op_cb_3a, op_cb_3b, op_cb_3c, op_cb_3d, op_cb_3e, op_cb_3f,
-                                               op_cb_40, op_cb_41, op_cb_42, op_cb_43, op_cb_44, op_cb_45, op_cb_46, op_cb_47, op_cb_48, op_cb_49, op_cb_4a, op_cb_4b, op_cb_4c, op_cb_4d, op_cb_4e, op_cb_4f,
-                                               op_cb_50, op_cb_51, op_cb_52, op_cb_53, op_cb_54, op_cb_55, op_cb_56, op_cb_57, op_cb_58, op_cb_59, op_cb_5a, op_cb_5b, op_cb_5c, op_cb_5d, op_cb_5e, op_cb_5f,
-                                               op_cb_60, op_cb_61, op_cb_62, op_cb_63, op_cb_64, op_cb_65, op_cb_66, op_cb_67, op_cb_68, op_cb_69, op_cb_6a, op_cb_6b, op_cb_6c, op_cb_6d, op_cb_6e, op_cb_6f,
-                                               op_cb_70, op_cb_71, op_cb_72, op_cb_73, op_cb_74, op_cb_75, op_cb_76, op_cb_77, op_cb_78, op_cb_79, op_cb_7a, op_cb_7b, op_cb_7c, op_cb_7d, op_cb_7e, op_cb_7f,
-                                               op_cb_80, op_cb_81, op_cb_82, op_cb_83, op_cb_84, op_cb_85, op_cb_86, op_cb_87, op_cb_88, op_cb_89, op_cb_8a, op_cb_8b, op_cb_8c, op_cb_8d, op_cb_8e, op_cb_8f,
-                                               op_cb_90, op_cb_91, op_cb_92, op_cb_93, op_cb_94, op_cb_95, op_cb_96, op_cb_97, op_cb_98, op_cb_99, op_cb_9a, op_cb_9b, op_cb_9c, op_cb_9d, op_cb_9e, op_cb_9f,
-                                               op_cb_a0, op_cb_a1, op_cb_a2, op_cb_a3, op_cb_a4, op_cb_a5, op_cb_a6, op_cb_a7, op_cb_a8, op_cb_a9, op_cb_aa, op_cb_ab, op_cb_ac, op_cb_ad, op_cb_ae, op_cb_af,
-                                               op_cb_b0, op_cb_b1, op_cb_b2, op_cb_b3, op_cb_b4, op_cb_b5, op_cb_b6, op_cb_b7, op_cb_b8, op_cb_b9, op_cb_ba, op_cb_bb, op_cb_bc, op_cb_bd, op_cb_be, op_cb_bf,
-                                               op_cb_c0, op_cb_c1, op_cb_c2, op_cb_c3, op_cb_c4, op_cb_c5, op_cb_c6, op_cb_c7, op_cb_c8, op_cb_c9, op_cb_ca, op_cb_cb, op_cb_cc, op_cb_cd, op_cb_ce, op_cb_cf,
-                                               op_cb_d0, op_cb_d1, op_cb_d2, op_cb_d3, op_cb_d4, op_cb_d5, op_cb_d6, op_cb_d7, op_cb_d8, op_cb_d9, op_cb_da, op_cb_db, op_cb_dc, op_cb_dd, op_cb_de, op_cb_df,
-                                               op_cb_e0, op_cb_e1, op_cb_e2, op_cb_e3, op_cb_e4, op_cb_e5, op_cb_e6, op_cb_e7, op_cb_e8, op_cb_e9, op_cb_ea, op_cb_eb, op_cb_ec, op_cb_ed, op_cb_ee, op_cb_ef,
-                                               op_cb_f0, op_cb_f1, op_cb_f2, op_cb_f3, op_cb_f4, op_cb_f5, op_cb_f6, op_cb_f7, op_cb_f8, op_cb_f9, op_cb_fa, op_cb_fb, op_cb_fc, op_cb_fd, op_cb_fe, op_cb_ff };
+    
 
 
     
