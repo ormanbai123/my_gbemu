@@ -63,7 +63,7 @@ void TickTimer(uint32_t elapsedCycles) {
 
 void InitTimer(Timer* timer) {
 	timer->div = 0;
-	timer->prevAndResult = 0;
+	timer->prevAndResult = false;
 
 	g_timer = timer;
 }

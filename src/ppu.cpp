@@ -256,9 +256,6 @@ namespace {
 				loByte = GB_Read(sprite_base + sprite_offset);
 				hiByte = GB_Read(sprite_base + sprite_offset + 1);
 
-				uint16_t tempaddr1 = sprite_base + sprite_offset;
-				uint16_t tempaddr2 = sprite_base + sprite_offset + 1;
-
 				for (auto col = 0; col < 8; ++col) {
 
 					sprite_x = col + obj.posX - 8; // Real X position of sprite pixel.
